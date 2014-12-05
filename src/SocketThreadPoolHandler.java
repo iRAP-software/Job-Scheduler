@@ -1,5 +1,7 @@
 
 import java.net.Socket;
+import java.util.Iterator;
+import java.util.concurrent.BlockingQueue;
 
 /*
  * This is an thread that belongs in a "pool" that handles socket connection.
@@ -10,6 +12,8 @@ import java.net.Socket;
 
 public class SocketThreadPoolHandler extends Thread
 {
+    private BlockingQueue<SocketConnection> m_clientSockets;
+    
     private static SocketListener s_listener = null;
     
     public SocketThreadPoolHandler(SocketListener listener)
@@ -17,19 +21,51 @@ public class SocketThreadPoolHandler extends Thread
         s_listener = listener;
     }
     
+    
+    /**
+     * Add a socket to this handlers collection of sockets that it is responsible for.
+     * @param clientSocket 
+     */
+    public void addSocket(Socket clientSocket)
+    {
+        SocketConnection conn = new SocketConnection(clientSocket);
+        m_clientSockets.add(conn);
+    }
+    
+    
+    /**
+     * Return the number of sockets this thread is currently handling.
+     * @return the number of sockets
+     */
+    public int getSocketCount()
+    {
+        return m_clientSockets.size();
+    }
+    
+    
     public void run()
     {
         while (true)
         {
-            try
+            Iterator socketIterator = m_clientSockets.iterator();
+            
+            while (socketIterator.hasNext())
             {
-                // This will automatically wait/block when nothing is available.
-                Socket socket = s_listener.getWaitingSocket();
-                HandlerLogic.handleSocket(socket);
-            }
-            catch (Exception e)
-            {
-                System.out.println("SocketThreadPoolHandler: " + e.getMessage().toString());
+                try
+                {
+                    // This will automatically wait/block when nothing is available.
+                    SocketConnection connection = (SocketConnection)socketIterator.next();
+                    HandlerLogic.handleSocket(connection);
+                    
+                    if (connection.isClosed())
+                    {
+                        socketIterator.remove();
+                    }
+                }
+                catch (Exception e)
+                {
+                    System.out.println("SocketThreadPoolHandler: " + e.getMessage().toString());
+                }
             }
         }
     }

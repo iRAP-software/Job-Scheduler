@@ -10,12 +10,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -27,72 +21,24 @@ public class HandlerLogic
      * this in order to handle their socket connections.
      * @param clientSocket 
      */
-    public static void handleSocket(Socket clientSocket)
+    public static void handleSocket(SocketConnection clientSocket)
     {
-        try
+        if (clientSocket.isMessageWaiting())
         {
-            InputStream in    = clientSocket.getInputStream();
-            BufferedReader br = new BufferedReader(new InputStreamReader(in));
-            PrintWriter out   = new PrintWriter(clientSocket.getOutputStream());
-
-            while (!br.ready())
-            {
-                System.out.println("Buffered reader is not ready!?");
-                System.out.println("sleeping");
-                
-                try 
-                {
-                    Thread.sleep(100);
-                } 
-                catch (InterruptedException ex) 
-                {
-                    // do nothing
-                }
-            }
-            
+            String clientMsg = clientSocket.readMessage();
+            processMessage(clientMsg, clientSocket);
+        }
+    }
     
-            String clientMsg = br.readLine();
-            JsonObject response = processMessage(clientMsg);
-
-            System.out.println("Converting response object to string...");
-            Gson gson = new Gson();
-            String responseString = gson.toJson(response);
-
-            System.out.println("Writing to client: \n" + responseString);
-
-            // We must use println instead of print becuase php (Normal mode not binary) 
-            // requires responses to end in an endline to mark the end.
-            out.println(responseString);
-            out.flush();
-            
-            // Wait for the client to ack the message recieved
-            System.out.println("Waiting for client to ack the message");
-            int waitTime = 0;
-            int maxWaitTime = Settings.MAX_ACK_WAIT * 1000;
-            
-            while (in.available() == 0 && waitTime < maxWaitTime)
-            {
-                try 
-                {
-                    waitTime += 100;
-                    System.out.println("sleeping");
-                    Thread.sleep(100);
-                } 
-                catch (InterruptedException ex) 
-                {
-                    
-                }
-            }
-            
-            System.out.println("Closing socket");
-            out.close();
-            br.close();
-            clientSocket.close();
-        }
-        catch (IOException e)
-        {
-            System.out.println("ERROR! HandlerLogic experienced IOException when handling socket");
-        }
+    
+    /**
+     * Send a message on the socket connection.
+     * @param clientSocket
+     * @param responseString 
+     */
+    private static void sendMessage(SocketConnection clientSocket, String responseString)
+    {
+        clientSocket.sendMessage(responseString);
     }
     
     
@@ -101,9 +47,8 @@ public class HandlerLogic
      * @param String clientMsg - the message that was passed to us.
      * @return JsonObject
      */
-    private static JsonObject processMessage(String clientMsg)
+    private static void processMessage(String clientMsg, SocketConnection clientSocket)
     {
-        System.out.println("processing client message: " + clientMsg);
         JsonObject response = new JsonObject();
         JsonObject cargo = null;
         
@@ -111,12 +56,11 @@ public class HandlerLogic
         JsonParser parser = new JsonParser();
         JsonObject clientMsgJson = (JsonObject)parser.parse(clientMsg);
         
+        String action = "";
+        
         if (clientMsgJson.has("action"))
         {
-            String action = clientMsgJson.get("action").getAsString();
-            
-            System.out.println("Action: " + action);
-            
+            action = clientMsgJson.get("action").getAsString();            
             clientMsgJson.remove("action");
             
             try
@@ -131,7 +75,6 @@ public class HandlerLogic
 
                     case "get_task":
                     {
-                        System.out.println("Running get_task");
                         cargo = handleGetTask(clientMsgJson);
                     }
                     break;
@@ -152,6 +95,13 @@ public class HandlerLogic
                     {
                         handleRejectTask(clientMsgJson);
                     }
+                    break;
+                    
+                    case "close":
+                    {
+                        
+                    }
+                    break;
 
                     default:
                     {
@@ -181,21 +131,29 @@ public class HandlerLogic
         }
         
         
-        String cargoString = "";
-        
-        if (cargo != null)
+        // If the client requested us to close the connection, then close it.
+        if (action.equals("close"))
         {
-            System.out.println("Aadding the cargo as a json primitive...");
-            response.add("cargo", cargo);
-            System.out.println("Added the cargo as json primitive.");
+            clientSocket.close();
         }
         else
         {
-            // Still want to send a cargo element, but with nothing in it.
-            response.add("cargo", new JsonPrimitive(""));
-        }
+            String cargoString = "";
         
-        return response;
+            if (cargo != null)
+            {
+                response.add("cargo", cargo);
+            }
+            else
+            {
+                // Still want to send a cargo element, but with nothing in it.
+                response.add("cargo", new JsonPrimitive(""));
+            }
+
+            Gson gson = new Gson();
+            String responseString = gson.toJson(response);
+            clientSocket.sendMessage(responseString);
+        }
     }
     
     
@@ -231,13 +189,11 @@ public class HandlerLogic
         }
         
         String taskName = clientMessage.get("task_name").getAsString();
-        System.out.println("Adding task: " +  taskName);
                 
         ArrayList<Integer> dependencies = new ArrayList<>();
         
         if (clientMessage.has("dependencies"))
         {
-            System.out.println("Adding dependeincies...");
             JsonArray dependenciesRaw = clientMessage.get("dependencies").getAsJsonArray();
             Iterator dependencyIterator = dependenciesRaw.iterator();
             
@@ -270,11 +226,8 @@ public class HandlerLogic
             group = clientMessage.get("group").getAsString();
         }
         
-        Scheduler scheduler = Scheduler.getInstance();
-        
-        System.out.println("adding the task to the scheduler...");
+        Scheduler scheduler = Scheduler.getInstance();        
         Integer newTaskId = scheduler.addTask(taskName, dependencies, extraInfo, priority, group);
-        
         cargo.add("task_id", new JsonPrimitive(newTaskId));
         
         return cargo;
@@ -290,15 +243,9 @@ public class HandlerLogic
     {
         // This forms part of the response.
         JsonObject cargo = new JsonObject();
-        System.out.println("Getting scheduler...");
         Scheduler scheduler = Scheduler.getInstance();
-        
-        System.out.println("Asking scheduler for first available task...");
-        Task taskToDo = scheduler.getAvailableTask();
-        System.out.println("Serializing fetched task...");
-        
-        cargo.add("task", taskToDo.jsonSerialize());
-        
+        Task taskToDo = scheduler.getAvailableTask();        
+        cargo.add("task", taskToDo.jsonSerialize());        
         return cargo;
     }
     

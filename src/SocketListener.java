@@ -10,7 +10,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.concurrent.BlockingQueue;
+import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -24,11 +24,9 @@ public class SocketListener extends Thread
     private static SocketListener s_instance;
     private ServerSocket m_socket;
     
-    // if we are using a thread pool, this will hold all the sockets that threads will pull from
-    private static BlockingQueue<Socket> s_clientSockets;
-    
-    // if we are using a thread pool, this is what will hold them.
+    // if we are using a thread pool, this is what will hold the socket handling threads
     private static ArrayList<Thread> s_threadHandlers;
+    
     
     public SocketListener()
     {
@@ -78,10 +76,11 @@ public class SocketListener extends Thread
                 
                 if (Settings.USE_THREAD_POOL)
                 {
-                    s_clientSockets.add(clientSocket);
+                    pushSocketToThreadPoolHandler(clientSocket);
                 }
                 else
                 {
+                    // No thread pool, so one thread per socket connection
                     Thread threadHandler = new SocketConnectionHandler(clientSocket);
                     threadHandler.start();
                 }
@@ -94,21 +93,50 @@ public class SocketListener extends Thread
     }
     
     
-    
     /**
-     * 
-     * @return 
+     * Pushes the provided socket onto the handler in the thread pool handler that is handling the
+     * least number of sockets. 
+     * @param Socket - the socket we want to push onto a handler.
      */
-    public Socket getWaitingSocket()
+    private void pushSocketToThreadPoolHandler(Socket clientSocket)
     {
-        try
+        int minimum = 999999999;
+        boolean assignedSocket = false;
+        SocketThreadPoolHandler minimumHandler = (SocketThreadPoolHandler)s_threadHandlers.get(0);
+        Iterator iterator = s_threadHandlers.iterator();
+        
+        while (iterator.hasNext())
         {
-            return s_clientSockets.take();
+            SocketThreadPoolHandler handler = (SocketThreadPoolHandler)iterator.next();
+            
+            if (handler.getSocketCount() == 0)
+            {
+                // Quick escape since any thread that has 0 tasks can automatically be assigned
+                assignedSocket=true;
+                handler.addSocket(clientSocket);
+                break;
+            }
+            else
+            {
+                if (handler.getSocketCount() < minimum)
+                {
+                    minimum = handler.getSocketCount();
+                    minimumHandler = handler;
+                }
+            }
         }
-        catch(Exception e)
+        
+        // Check that we havent already assigned the socket to a thread that had no work.
+        if (!assignedSocket)
         {
-            return getWaitingSocket();
+            try
+            {
+                minimumHandler.addSocket(clientSocket);
+            }
+            catch(Exception e)
+            {
+                System.out.println("Somehow minimumhandler never got defined.");
+            }
         }
     }
-
 }

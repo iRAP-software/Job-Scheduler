@@ -113,12 +113,10 @@ public class Scheduler
         
         if (remainingDependencies.isEmpty())
         {
-            System.out.println("Task has no dependencies so adding to the available tasks list");
             m_availableTasks.add(newTask);
         }
         else
         {
-            System.out.println("Task has dependencies adding to m_dependencies");
             // Task is not available so we need to put it in the relevant dependency area.
             Set dependency_ids = remainingDependencies.keySet();
             
@@ -204,9 +202,7 @@ public class Scheduler
      * @throws Exception if m_availableTasks is empty
      */
     public synchronized Task getAvailableTask() throws Exception
-    {
-        System.out.println("Scheduler fetching first available task.");
-        
+    {        
         Task availableJob = m_availableTasks.poll();
         
         if (availableJob != null)
@@ -250,7 +246,6 @@ public class Scheduler
             }
         }
         
-        System.out.println("Scheduler returning availableJob");
         return availableJob;
     }
     

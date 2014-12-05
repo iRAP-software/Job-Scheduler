@@ -39,4 +39,9 @@ public class Settings
     // WARNING - if you want this to be automatic use [null] instead of deleting it or 0 etc.
     //public static String ADDRESS = "172.17.0.2";
     public static String ADDRESS = null;
+    
+    
+    // Switch to true if you want the server to ack every message, and will be expecting the client
+    // to be doing the same.
+    public static boolean ACK_MESSAGES = false;
 }
