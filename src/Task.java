@@ -131,8 +131,6 @@ public class Task implements Comparable<Task>
     {    
         JsonObject jsonForm = new JsonObject();
         
-        System.out.println("name: " + m_name);
-        
         jsonForm.add("id",            new JsonPrimitive(m_taskId));
         jsonForm.add("name",          new JsonPrimitive(m_name));
         jsonForm.add("creation_time", new JsonPrimitive(m_creationTime));
@@ -278,7 +276,6 @@ public class Task implements Comparable<Task>
     @Override 
     public boolean equals(Object other) 
     {
-        System.out.println("Running match against other object");
         boolean isEqual = false;
         
         if (other != null)
