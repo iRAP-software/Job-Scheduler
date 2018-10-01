@@ -5,30 +5,20 @@
 
 # This is a customized version of ubuntu 14 that allows things like ssh server etc to run
 # http://phusion.github.io/baseimage-docker/
-FROM ubuntu:14.04
+FROM ubuntu:18.04
 
 # Set correct environment variables.
 ENV HOME /root
 
-#============ Normal instructions below this line=====================
-
 RUN apt-get update
 RUN apt-get dist-upgrade -y
-
-
-# Add repo for java
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C2518248EEA14886
-RUN echo 'deb http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main' > /etc/apt/sources.list.d/webupd8team-java-trusty.list
 
 # Upgrade the system
 RUN apt-get update
 RUN apt-get dist-upgrade -y
 
-# This prevents the acceptance of the licence agreement preventing java install
-RUN echo oracle-java7-installer shared/accepted-oracle-license-v1-1 select true | /usr/bin/debconf-set-selections
-
 # Install java 7
-RUN apt-get install oracle-java7-installer -y
+RUN apt-get install openjdk-8-jdk-headless -y
 
 # This is strictly not necessary but sure makes debugging easier.
 RUN apt-get install vim -y
@@ -51,6 +41,3 @@ RUN /bin/bash /root/scheduler/docker/compile_java.sh
 # Execute the containers startup script which will start many processes/services
 # The startup file was already added when we added "project"
 CMD ["/bin/bash", "/root/scheduler/docker/startup.sh"]
-
-#================ Dont touch below this line ===============================
-RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
