@@ -10,7 +10,7 @@ require_once(__DIR__ . '/../../../bootstrap.php');
 
 class TestInfiniteGrab extends TestAbstract
 {
-    private $m_recieved_tasks = array(); # store the order in which the tasks came back, name only
+    private $m_recievedTasks = array(); # store the order in which the tasks came back, name only
     
     public function getErrorMessage() 
     {
@@ -25,8 +25,6 @@ class TestInfiniteGrab extends TestAbstract
      */
     public function test() 
     {
-        global $globals;
-        
         $scheduler = $this->getScheduler();
         
         # Now fetch the tasks and hope that they come in the correct order.

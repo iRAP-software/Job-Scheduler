@@ -4,7 +4,7 @@ require_once(__DIR__ . '/../bootstrap.php');
 
 function main()
 {
-    $num_failed = 0;
+    $numFailed = 0;
     
     $tests = array(
         new TestTaskTimeout(),
@@ -20,22 +20,22 @@ function main()
     {
         print "Running " . get_class($test) . PHP_EOL;
         /* @var $test TestAbstract */
-        $was_success = $test->run();
+        $wasSuccess = $test->run();
         
-        if (!$was_success)
+        if ($wasSuccess == false)
         {
-            $num_failed++;
+            $numFailed++;
             echo $test->getErrorMessage() . PHP_EOL;
         }
     }
     
-    if ($num_failed == 0)
+    if ($numFailed == 0)
     {
         print "Congratulations! All tests succeeded." . PHP_EOL;
     }
     else 
     {
-        print $num_failed . " tests failed!" . PHP_EOL;
+        print $numFailed . " tests failed!" . PHP_EOL;
     }
 }
 

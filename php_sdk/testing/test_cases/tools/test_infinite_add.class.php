@@ -10,7 +10,7 @@ require_once(__DIR__ . '/../../../bootstrap.php');
 
 class TestInfiniteAdd extends TestAbstract
 {
-    private $m_recieved_tasks = array(); # store the order in which the tasks came back, name only
+    private $m_recievedTasks = array(); # store the order in which the tasks came back, name only
     
     public function getErrorMessage() 
     {
@@ -26,8 +26,6 @@ class TestInfiniteAdd extends TestAbstract
      */
     public function test() 
     {
-        global $globals;
-        
         $scheduler = $this->getScheduler();
         
         while (true)

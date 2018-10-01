@@ -12,13 +12,13 @@
 
 class TestTaskTimeout extends TestAbstract
 {
-    private $m_recieved_tasks = array(); # store the order in which the tasks came back, name only
+    private $m_recievedTasks = array(); # store the order in which the tasks came back, name only
     
     public function getErrorMessage() 
     {
         $message = 
             get_class() . " incorrectly ordered tasks based on priorities." . PHP_EOL .
-            print_r($this->m_recieved_tasks, true) . PHP_EOL;
+            print_r($this->m_recievedTasks, true) . PHP_EOL;
         
         return $message;
     }
@@ -30,32 +30,33 @@ class TestTaskTimeout extends TestAbstract
      */
     public function test() 
     {
-        global $globals;
-        
         $scheduler = $this->getScheduler();
         
-        $not_important_id = $scheduler->addTask($name="not_important", 
-                                                $context=array(), 
-                                                $dependencies=array(),
-                                                $priority=1);
+        $notImportantId = $scheduler->addTask(
+            $name = "not_important", 
+            $context = array(), 
+            $dependencies = array(),
+            $priority = 1
+        );
         
-        $high_importance_id = $scheduler->addTask($name="high_importance", 
-                                                  $context=array(), 
-                                                  $dependencies=array(),
-                                                  $priority=9); 
+        $highImportanceId = $scheduler->addTask(
+            $name = "high_importance", 
+            $context = array(), 
+            $dependencies = array(),
+            $priority = 9
+        ); 
         
         # Now fetch the tasks and hope that they come in the correct order.
         $this->m_successful = true; # default to true and let the funcs below set to false if fail
         
-        $this->fetch_expected_task($high_importance_id, 
-                                   "high_importance", 
-                                   $this->m_recieved_tasks);
+        $this->fetch_expected_task(
+            $highImportanceId, 
+            "high_importance", 
+            $this->m_recievedTasks
+        );
         
-        $sleepTime = $globals['MAX_LOCK_TIME'] + 2; // Has to be longer than the timeout time
-        
-        print "Sleeping for task timout period of: " . $sleepTime . ' seconds.' . 
-              PHP_EOL;
-        
+        $sleepTime = MAX_LOCK_TIME + 2; // Has to be longer than the timeout time
+        print "Sleeping for task timout period of: " . $sleepTime . ' seconds.' . PHP_EOL;
         sleep($sleepTime);
         
         
@@ -64,12 +65,16 @@ class TestTaskTimeout extends TestAbstract
         # looking for timeout tasks. This is is because we want to give them as much time as
         # possible and not waste CPU looping through tasks that are in progress.
         
-        $this->fetch_and_complete_expected_task($not_important_id, 
-                                                "not_important", 
-                                                $this->m_recieved_tasks);
+        $this->fetch_and_complete_expected_task(
+            $notImportantId, 
+            "not_important", 
+            $this->m_recievedTasks
+        );
         
-        $this->fetch_and_complete_expected_task($high_importance_id, 
-                                                "high_importance", 
-                                                $this->m_recieved_tasks);
+        $this->fetch_and_complete_expected_task(
+            $highImportanceId, 
+            "high_importance", 
+            $this->m_recievedTasks
+        );
     }
 }

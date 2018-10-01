@@ -19,12 +19,9 @@ abstract class TestAbstract
      */
     protected function getScheduler()
     {
-        global $globals;
-        
         if ($this->m_scheduler == null)
         {
-            $this->m_scheduler = new SchedulerCommunicator($globals['SCHEDULER_ADDRESS'], 
-                                                           $globals['SCHEDULER_PORT']);
+            $this->m_scheduler = new SchedulerCommunicator(SCHEDULER_ADDRESS, SCHEDULER_PORT);
         }
         
         return $this->m_scheduler;
